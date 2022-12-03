@@ -226,8 +226,6 @@ func (svcFwd *ServiceFWD) LoopPodsToForward(pods []v1.Pod, includePodNameInHost 
 			continue
 		}
 
-		podPort := ""
-
 		serviceHostName := svcFwd.Svc.Name
 		svcName := svcFwd.Svc.Name
 
@@ -243,7 +241,7 @@ func (svcFwd *ServiceFWD) LoopPodsToForward(pods []v1.Pod, includePodNameInHost 
 			ClusterN:                 svcFwd.ClusterN,
 			NamespaceN:               svcFwd.NamespaceN,
 			Namespace:                svcFwd.Namespace,
-			Port:                     podPort,
+			Ports:                    svcFwd.getLocalPorts(),
 			ForwardConfigurationPath: svcFwd.ForwardConfigurationPath,
 			ForwardIPReservations:    svcFwd.ForwardIPReservations,
 		}
@@ -277,7 +275,7 @@ func (svcFwd *ServiceFWD) LoopPodsToForward(pods []v1.Pod, includePodNameInHost 
 				continue
 			}
 
-			podPort = port.TargetPort.String()
+			podPort := port.TargetPort.String()
 			localPort := svcFwd.getPortMap(port.Port)
 			p, err := strconv.ParseInt(localPort, 10, 32)
 			if err != nil {
@@ -405,4 +403,12 @@ func (svcFwd *ServiceFWD) getPortMap(port int32) string {
 		}
 	}
 	return p
+}
+
+func (svcFwd *ServiceFWD) getLocalPorts() []string {
+	localPorts := []string{}
+	for _, port := range svcFwd.Svc.Spec.Ports {
+		localPorts = append(localPorts, svcFwd.getPortMap(port.Port))
+	}
+	return localPorts
 }

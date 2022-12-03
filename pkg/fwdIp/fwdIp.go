@@ -20,7 +20,7 @@ type ForwardIPOpts struct {
 	ClusterN                 int
 	NamespaceN               int
 	Namespace                string
-	Port                     string
+	Ports                    []string
 	ForwardConfigurationPath string
 	ForwardIPReservations    []string
 }
