@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"net"
 	"os"
+	"os/exec"
+	"runtime"
 	"strconv"
 	"strings"
 	"sync"
@@ -127,6 +129,14 @@ func addToRegistry(regKey string, opts ForwardIPOpts, ip net.IP) error {
 	if conflicting := hasConflictingReservations(opts, ip.String()); conflicting != nil {
 		msg := fmt.Sprintf("Conflicting reservation for %s on %s when placing %s. Will allocate next available",
 			conflicting.Name, allocationKey, opts.ServiceName)
+		log.Debug(msg)
+		return errors.New(msg)
+	}
+
+	// check for interface already in use
+	if err := isInterfaceInUse(ip, opts.Ports); err != nil {
+		msg := fmt.Sprintf("Interface already in use (%s) on %s when placing %s. Will allocate next available",
+			err, allocationKey, opts.ServiceName)
 		log.Debug(msg)
 		return errors.New(msg)
 	}
@@ -269,6 +279,66 @@ func getForwardConfiguration(opts ForwardIPOpts) *ForwardConfiguration {
 
 	forwardConfiguration = conf
 	return applyCLIPassedReservations(opts, forwardConfiguration)
+}
+
+func isInterfaceInUse(ip net.IP, ports []string) error {
+	for _, port := range ports {
+		// lo means we are probably on linux and not mac
+		_, err := net.InterfaceByName("lo")
+		if err == nil || runtime.GOOS == "windows" {
+			// if no error then check to see if the ip:port are in use
+			conn, err := net.Dial("tcp", ip.String()+":"+port)
+			if err != nil {
+				continue
+			}
+			_ = conn.Close()
+
+			return errors.New("ip and port are in use")
+		}
+
+		networkInterface, err := net.InterfaceByName("lo0")
+		if err != nil {
+			return err
+		}
+
+		addrs, err := networkInterface.Addrs()
+		if err != nil {
+			return err
+		}
+
+		// check the addresses already assigned to the interface
+		for _, addr := range addrs {
+
+			// found a match
+			if addr.String() == ip.String()+"/8" {
+				// found ip, now check for unused port
+				conn, err := net.Dial("tcp", ip.String()+":"+port)
+				if err != nil {
+					continue
+				}
+				_ = conn.Close()
+			}
+		}
+
+		// ip is not in the list of addrs for networkInterface
+		cmd := "ifconfig"
+		args := []string{"lo0", "alias", ip.String(), "up"}
+		if err := exec.Command(cmd, args...).Run(); err != nil {
+			fmt.Println("Cannot ifconfig lo0 alias " + ip.String() + " up")
+			fmt.Println("Error: " + err.Error())
+			os.Exit(1)
+		}
+
+		conn, err := net.Dial("tcp", ip.String()+":"+port)
+		_ = conn.Close()
+		if err != nil {
+			continue
+		}
+
+		return errors.New("unable to find an available IP/Port")
+	}
+
+	return nil
 }
 
 func (o ForwardIPOpts) MatchList() []string {
