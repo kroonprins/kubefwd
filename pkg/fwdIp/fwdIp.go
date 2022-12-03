@@ -22,6 +22,7 @@ type ForwardIPOpts struct {
 	Namespace                string
 	Ports                    []string
 	ForwardConfigurationPath string
+	BaseUnreservedIP         string
 	ForwardIPReservations    []string
 }
 
@@ -217,6 +218,9 @@ func validateForwardConfiguration(f *ForwardConfiguration) {
 }
 
 func applyCLIPassedReservations(opts ForwardIPOpts, f *ForwardConfiguration) *ForwardConfiguration {
+	if opts.BaseUnreservedIP != "" {
+		f.BaseUnreservedIP = opts.BaseUnreservedIP
+	}
 	for _, resStr := range opts.ForwardIPReservations {
 		res := ServiceConfigurationFromReservation(resStr)
 

@@ -73,6 +73,7 @@ type ServiceFWD struct {
 	DoneChannel  chan struct{} // After shutdown is complete, this channel will be closed
 
 	ForwardConfigurationPath string   // file path to IP reservation configuration
+	BaseUnreservedIP         string   // cli passed base unreserved ip
 	ForwardIPReservations    []string // cli passed IP reservations
 }
 
@@ -243,6 +244,7 @@ func (svcFwd *ServiceFWD) LoopPodsToForward(pods []v1.Pod, includePodNameInHost 
 			Namespace:                svcFwd.Namespace,
 			Ports:                    svcFwd.getLocalPorts(),
 			ForwardConfigurationPath: svcFwd.ForwardConfigurationPath,
+			BaseUnreservedIP:         svcFwd.BaseUnreservedIP,
 			ForwardIPReservations:    svcFwd.ForwardIPReservations,
 		}
 		localIp, err := fwdnet.ReadyInterface(opts)

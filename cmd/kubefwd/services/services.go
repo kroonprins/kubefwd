@@ -58,6 +58,7 @@ var domain string
 var mappings []string
 var isAllNs bool
 var fwdConfigurationPath string
+var baseUnreservedIP string
 var fwdReservations []string
 
 func init() {
@@ -77,6 +78,7 @@ func init() {
 	Cmd.Flags().StringSliceVarP(&mappings, "mapping", "m", []string{}, "Specify a port mapping. Specify multiple mapping by duplicating this argument.")
 	Cmd.Flags().BoolVarP(&isAllNs, "all-namespaces", "A", false, "Enable --all-namespaces option like kubectl.")
 	Cmd.Flags().StringSliceVarP(&fwdReservations, "reserve", "r", []string{}, "Specify an IP reservation. Specify multiple reservations by duplicating this argument.")
+	Cmd.Flags().StringVarP(&baseUnreservedIP, "base-unreserved-ip", "b", "", "Base unreserved ip.")
 	Cmd.Flags().StringVarP(&fwdConfigurationPath, "fwd-conf", "z", "", "Define an IP reservation configuration")
 
 }
@@ -95,6 +97,7 @@ var Cmd = &cobra.Command{
 		"  kubefwd svc -n the-project -m 80:8080 -m 443:1443\n" +
 		"  kubefwd svc -n the-project -z path/to/conf.yml\n" +
 		"  kubefwd svc -n the-project -r svc.ns:127.3.3.1\n" +
+		"  kubefwd svc -n the-project -b 127.100.27.1\n" +
 		"  kubefwd svc --all-namespaces",
 	Run: runCmd,
 }
@@ -447,6 +450,7 @@ func (opts *NamespaceOpts) AddServiceHandler(obj interface{}) {
 		DoneChannel:              make(chan struct{}),
 		PortMap:                  opts.ParsePortMap(mappings),
 		ForwardConfigurationPath: fwdConfigurationPath,
+		BaseUnreservedIP:         baseUnreservedIP,
 		ForwardIPReservations:    fwdReservations,
 	}
 
